@@ -1,0 +1,10 @@
+/_build/
+/deps/
+/cover/
+/doc/
+/.env
+erl_crash.dump
+*.ez
+/mnesia/
+/data/*.tsv
+/data/*.tsv.gz
