@@ -13,7 +13,7 @@ defmodule StreamivioImdbApi.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :runtime_tools, :mnesia, :inets, :ssl],
+      extra_applications: [:logger, :runtime_tools, :inets, :ssl],
       mod: {StreamivioImdbApi.Application, []}
     ]
   end
