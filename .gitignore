@@ -6,5 +6,6 @@
 erl_crash.dump
 *.ez
 /mnesia/
+/Mnesia.*/
 /data/*.tsv
 /data/*.tsv.gz
