@@ -8,7 +8,18 @@ defmodule StreamivioImdbApi.Store do
 
   @impl true
   def init(:ok) do
-    :mnesia.start()
+    case :mnesia.create_schema([node()]) do
+      :ok -> :ok
+      {:error, {_node, {:already_exists, _existing}}} -> :ok
+      {:error, _reason} -> :ok
+    end
+
+    case :mnesia.start() do
+      :ok -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+      {:error, reason} -> raise "Could not start Mnesia: #{inspect(reason)}"
+    end
+
     create_table(@titles, [:tconst, :title_type, :primary_title, :original_title, :is_adult, :start_year, :end_year, :runtime_minutes, :genres])
     create_table(@ratings, [:tconst, :average_rating, :num_votes])
     {:ok, %{}}
@@ -30,12 +41,22 @@ defmodule StreamivioImdbApi.Store do
     end
   end
 
+  def write_titles(records), do: write_batch(records)
+  def write_ratings(records), do: write_batch(records)
+
+  defp write_batch(records) do
+    case :mnesia.transaction(fn -> Enum.each(records, &:mnesia.write/1) end) do
+      {:atomic, _} -> :ok
+      {:aborted, reason} -> {:error, reason}
+    end
+  end
+
   def search(params) do
     query = params |> Map.get("q", "") |> String.trim() |> String.downcase()
     type = params["type"]
     year = parse_integer(params["year"])
-    limit = params |> Map.get("limit", "20") |> parse_integer() |> clamp(1, 100)
-    offset = params |> Map.get("offset", "0") |> parse_integer() |> max(0)
+    limit = (parse_integer(params["limit"]) || 20) |> clamp(1, 100)
+    offset = max(parse_integer(params["offset"]) || 0, 0)
 
     if query == "" do
       {:error, :query_required}
@@ -56,9 +77,16 @@ defmodule StreamivioImdbApi.Store do
         {:atomic, matches} ->
           sorted = Enum.sort_by(matches, &String.downcase(&1.primary_title || ""))
           page = sorted |> Enum.drop(offset) |> Enum.take(limit)
-          {:ok, %{results: page, total: length(sorted), limit: limit, offset: offset}}
+          {:ok, %{results: Enum.map(page, &attach_rating/1), total: length(sorted), limit: limit, offset: offset}}
         {:aborted, reason} -> {:error, reason}
       end
+    end
+  end
+
+  defp attach_rating(title) do
+    case :mnesia.transaction(fn -> :mnesia.read(@ratings, title.id) end) do
+      {:atomic, [{:imdb_ratings, _id, rating, votes}]} -> Map.merge(title, %{rating: rating, votes: votes})
+      _ -> Map.merge(title, %{rating: nil, votes: nil})
     end
   end
 
