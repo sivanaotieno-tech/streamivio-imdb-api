@@ -23,7 +23,7 @@ A self-hosted IMDb metadata service for Streamivio, built with **Elixir, Phoenix
 | GET | `/api/search?q=...&year=2024` | Filter by start year |
 | GET | `/api/search?q=...&limit=20&offset=0` | Paginate results |
 
-Search only returns records that have been imported into the local Mnesia database. A newly deployed instance will not contain the full IMDb catalogue until dataset import is configured and completed.
+Search only returns records that have been imported into the local Mnesia database. A newly deployed instance will not contain the full IMDb catalogue until you download and import the datasets. The initial search implementation scans the local title table, so plan an indexed search layer before serving high traffic.
 
 ## Requirements
 
@@ -53,6 +53,24 @@ curl http://localhost:4000/api/ping
 curl "http://localhost:4000/api/search?q=one%20piece&limit=10"
 curl "http://localhost:4000/api/search?q=one%20piece&type=tvSeries"
 curl "http://localhost:4000/api/tt0388629"
+```
+
+## Download and import IMDb datasets (Windows PowerShell)
+
+From the repository root, run:
+
+```powershell
+.\scripts\download_datasets.ps1
+mix deps.get
+mix imdb.import data/title.basics.tsv data/title.ratings.tsv
+```
+
+The download script streams decompression to disk rather than loading compressed datasets into memory. Import runs in batches of 1,000 records. The full datasets are large; allow substantial free disk space and time. Keep generated `data/` files out of Git.
+
+After import, try:
+
+```bash
+curl "http://localhost:4000/api/search?q=one%20piece&limit=10"
 ```
 
 ## Dataset and licensing
