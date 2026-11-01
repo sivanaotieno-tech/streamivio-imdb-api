@@ -1,0 +1,21 @@
+name: Elixir CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.2"
+          elixir-version: "1.16.3"
+      - name: Install dependencies
+        run: mix deps.get
+      - name: Compile
+        run: mix compile --warnings-as-errors
